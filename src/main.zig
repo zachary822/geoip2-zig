@@ -20,6 +20,8 @@ pub fn main() !u8 {
         return 1;
     }
 
+    std.debug.print("version: {s}\n", .{c.MMDB_lib_version()});
+
     const ip = try allocator.dupeZ(u8, args[2]);
     defer allocator.free(ip);
 
@@ -48,8 +50,6 @@ pub fn main() !u8 {
     status = c.MMDB_get_value(&result.entry, &entry_data, "autonomous_system_organization");
 
     if (status == c.MMDB_SUCCESS and entry_data.has_data) {
-        std.debug.print("type: {d}\n", .{entry_data.type});
-
         switch (entry_data.type) {
             c.MMDB_DATA_TYPE_UTF8_STRING => {
                 const str = try allocator.allocSentinel(u8, entry_data.data_size, 0);
