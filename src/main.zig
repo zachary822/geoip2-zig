@@ -2,6 +2,9 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("maxminddb.h");
 });
+const root = @import("root.zig");
+const MMDB = root.MMDB;
+const MMDBError = root.MMDBError;
 
 pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -10,39 +13,17 @@ pub fn main() !u8 {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    var mmdb: c.MMDB_s = undefined;
+    var mmdb = try MMDB.init(args[1]);
+    defer mmdb.deinit();
 
-    var status = c.MMDB_open(args[1], c.MMDB_MODE_MMAP, &mmdb);
-    defer c.MMDB_close(&mmdb);
-
-    if (status != c.MMDB_SUCCESS) {
-        std.debug.print("Failed to open database: {s}\n", .{c.MMDB_strerror(status)});
-        return 1;
-    }
-
-    std.debug.print("version: {s}\n", .{c.MMDB_lib_version()});
+    std.debug.print("version: {s}\n", .{MMDB.version()});
 
     const ip = try allocator.dupeZ(u8, args[2]);
     defer allocator.free(ip);
 
-    var gai_error: c_int = undefined;
+    var status: c_int = undefined;
 
-    var result = c.MMDB_lookup_string(&mmdb, ip, &gai_error, &status);
-
-    if (gai_error != 0) {
-        std.debug.print("Error parsing IP: {s}\n", .{c.gai_strerror(gai_error)});
-        return 1;
-    }
-
-    if (status != 0) {
-        std.debug.print("MaxMind DB lookup error: {s}\n", .{c.MMDB_strerror(status)});
-        return 1;
-    }
-
-    if (!result.found_entry) {
-        std.debug.print("No record found for IP address: {s}\n", .{ip});
-        return 0;
-    }
+    var result = try mmdb.lookupString(ip);
 
     std.debug.print("netmask: {d}\n", .{result.netmask - 96});
 
