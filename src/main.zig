@@ -36,9 +36,7 @@ pub fn main() !u8 {
                 const str = try allocator.allocSentinel(u8, entry_data.data_size, 0);
                 defer allocator.free(str);
 
-                for (0..entry_data.data_size) |i| {
-                    str[i] = entry_data.unnamed_0.utf8_string[i];
-                }
+                @memcpy(str, entry_data.unnamed_0.utf8_string[0..entry_data.data_size]);
 
                 std.debug.print("AS Organization: {s}\n", .{str});
             },
