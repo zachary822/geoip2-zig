@@ -2,9 +2,9 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("maxminddb.h");
 });
-const root = @import("root.zig");
-const MMDB = root.MMDB;
-const MMDBError = root.MMDBError;
+const geoip2 = @import("root.zig");
+const MMDB = geoip2.MMDB;
+const MMDBError = geoip2.MMDBError;
 
 pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

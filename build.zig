@@ -16,6 +16,14 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const maxminddb = b.dependency("libmaxminddb", .{});
+    const configure_step = blk: {
+        std.fs.accessAbsolute(maxminddb.path("src/.libs/libmaxminddb.a").getPath(b), .{ .mode = .read_only }) catch {
+            const configure = b.addSystemCommand(&.{ "sh", "-c", "./configure --enable-shared=no --enable-static=yes --enable-silent-rules -q && make" });
+            configure.setCwd(maxminddb.path("."));
+            break :blk configure;
+        };
+        break :blk null;
+    };
 
     const lib = b.addStaticLibrary(.{
         .name = "geoip2-zig",
@@ -25,6 +33,13 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    lib.addIncludePath(maxminddb.path("include"));
+    lib.addObjectFile(maxminddb.path("src/.libs/libmaxminddb.a"));
+
+    if (configure_step) |configure| {
+        lib.step.dependOn(&configure.step);
+    }
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -38,14 +53,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    std.fs.accessAbsolute(maxminddb.path("src/.libs/libmaxminddb.a").getPath(b), .{ .mode = .read_only }) catch {
-        const configure = b.addSystemCommand(&.{ "sh", "-c", "./configure --enable-shared=no --enable-static=yes --enable-silent-rules -q && make" });
-        configure.setCwd(maxminddb.path("."));
-
+    if (configure_step) |configure| {
         exe.step.dependOn(&configure.step);
-    };
-
-    exe.linkLibC();
+    }
 
     exe.addIncludePath(maxminddb.path("include"));
     exe.addObjectFile(maxminddb.path("src/.libs/libmaxminddb.a"));
